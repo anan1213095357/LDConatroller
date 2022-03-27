@@ -1,0 +1,97 @@
+﻿@page "/"
+@using LDConatroller.Core
+@using LDConatroller.Models
+@inject LdCmd ldCmd;
+@inject SimulatorService SimulatorService
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">序号</th>
+            <th scope="col">模拟器名称</th>
+            <th scope="col">控制</th>
+            <th scope="col">信息</th>
+            <th scope="col">脚本</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (Simulator simulator in SimulatorService.Simulators)
+        {
+            <tr>
+                <th scope="row" style="width:50px">
+                    <div class="form-check form-check-inline pt-2">
+                        <input class="form-check-input" type="checkbox" @bind='simulator.SimulatorInfo.Selected'>
+                        <span class="form-check-label">@simulator.SimulatorInfo.ID</span>
+                    </div>
+                </th>
+
+                <td style="width:200px" class="pt-3 fs-5 fw-bold">@simulator.SimulatorInfo.Name</td>
+                <td style="width:120px">
+
+                    @if (simulator.SimulatorInfo.IsRun == "1")
+                    {
+                        <button class="btn btn-danger col-12" @onclick='async _=>await StopSimulatorAsync(simulator.SimulatorInfo.ID)'>停止</button>
+                    }
+                    else if (simulator.SimulatorInfo.SimulatorStatus == SimulatorStatusEnum.Starting)
+                    {
+                        <button class="btn btn-primary col-12" @onclick='async _=>await launchSimulatorAsync(simulator.SimulatorInfo.ID)' disabled>启动中</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary col-12" @onclick='async _=>await launchSimulatorAsync(simulator.SimulatorInfo.ID)'>启动</button>
+                    }
+
+                </td>
+                <td class="col-3 p-3 text-truncate text-nowrap fs-5 ">
+                    <div class="bd-highlight rounded-1 w-100 ml-3">
+                        @simulator.SimulatorInfo.PrintStr
+                    </div>
+                </td>
+                <td>
+                    <div class="row">
+
+                        <div class="col-6">
+                            <select class="form-select" @onchange="(e)=>ScriptSelected(e,simulator)">
+                                @foreach (var item in simulator.ScriptTasks)
+                                {
+                                    <option value="@item.ScriptTaskName">@item.ScriptTaskName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            @if (simulator.SimulatorInfo.IsRun == "1")
+                            {
+                                <button class="btn btn-primary" @onclick='async _=>await launchScriptAsync(simulator.SimulatorInfo.ID)'>执行</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary" disabled>执行</button>
+                            }
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+
+
+@code {
+    Timer? timer;
+    List<Simulator> Simulators = new();
+    protected override void OnInitialized()
+    {
+        timer = new Timer(async e =>
+        {
+            Simulators = SimulatorService.Simulators;
+            await InvokeAsync(() => StateHasChanged());
+        }, null, 0, 1000);
+    }
+
+    private void ScriptSelected(ChangeEventArgs e, Simulator simulator)
+    {
+        var script = simulator.ScriptTasks.First(p => p.ScriptTaskName.Contains(e.Value!.ToString()!));
+        simulator.CurrScriptTask = script;
+    }
+}
